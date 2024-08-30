@@ -1,0 +1,20 @@
+PLATFORM=x86_64-lux
+CCFLAGS=-c -I./src/include -O3
+LDFLAGS=
+CC=x86_64-lux-gcc
+LD=x86_64-lux-ld
+SRC:=$(shell find ./src -type f -name "*.c")
+OBJ:=$(SRC:.c=.o)
+
+all: lumen
+
+%.o: %.c
+	@echo "\x1B[0;1;32m [  CC   ]\x1B[0m $<"
+	@$(CC) $(CCFLAGS) -o $@ $<
+
+lumen: $(OBJ)
+	@echo "\x1B[0;1;34m [  LD   ]\x1B[0m lumen"
+	@$(LD) $(LDFLAGS) $(OBJ) -o lumen
+
+clean:
+	@rm -f lumen $(OBJ)
