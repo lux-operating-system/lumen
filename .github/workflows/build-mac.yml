@@ -29,6 +29,12 @@ jobs:
 
       - name: Build and install lucerna
         run: make -C lucerna; make install -C lucerna
+
+      - name: Fetch servers
+        run: git clone https://github.com/lux-operating-system/servers
+      
+      - name: Build and install servers
+        run: make -C servers; make install -C servers
     
       - name: Build lumen
         run: make
