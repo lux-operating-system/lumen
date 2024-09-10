@@ -10,7 +10,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/lux/lux.h>        // execrdv
-#include <lumen/messages.h>
 
 /* socket descriptors for the kernel connection and for the lumen server */
 int kernelsd, lumensd;
@@ -66,12 +65,13 @@ int main(int argc, char **argv) {
     if(status) return -1;
 
     // now begin launching the servers -- these ones will be hard coded because
-    // they are necessary for everything and must be located on the ramdisk
+    // they are necessary for everything and must be located on the ramdisk as
+    // we still don't have any file system or storage drivers at this stage
     launchServer("vfs");        // virtual file system
-    launchServer("devfs");      // /dev vfs
+    launchServer("devfs");      // /dev
     launchServer("fb");         // framebuffer output
     launchServer("tty");        // terminal I/O
-    launchServer("procfs");     // /proc vfs
+    launchServer("procfs");     // /proc
 
     while(1);
 }
