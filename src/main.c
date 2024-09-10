@@ -5,16 +5,39 @@
  * lumen: router enabling communication between the kernel and the servers
  */
 
+#include <string.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <string.h>
+#include <sys/lux/lux.h>        // execrdv
+#include <lumen/messages.h>
 
 /* socket descriptors for the kernel connection and for the lumen server */
 int kernelsd, lumensd;
+pid_t self;
+
+/* launchServer(): launches a server from the ramdisk
+ * params: name: file name of the server executable
+ * returns: pid of the server
+ */
+
+pid_t launchServer(const char *name) {
+    pid_t pid = fork();
+    if(!pid) {
+        // child process
+        execrdv(name, NULL);
+        exit(-1);
+    }
+
+    // parent
+    return pid;
+}
 
 int main(int argc, char **argv) {
     // this is the first process that runs when the system boots
     // start by establishing a socket connection with the kernel
+    self = getpid();
+
     struct sockaddr_un kernel;
     kernel.sun_family = AF_UNIX;
     strcpy(kernel.sun_path, "lux:///kernel");   // special path, not a true file
@@ -41,6 +64,14 @@ int main(int argc, char **argv) {
     // set up lumen as a listener
     status = listen(lumensd, 0);    // use default backlog
     if(status) return -1;
+
+    // now begin launching the servers -- these ones will be hard coded because
+    // they are necessary for everything and must be located on the ramdisk
+    launchServer("vfs");        // virtual file system
+    launchServer("devfs");      // /dev vfs
+    launchServer("fb");         // framebuffer output
+    launchServer("tty");        // terminal I/O
+    launchServer("procfs");     // /proc vfs
 
     while(1);
 }
