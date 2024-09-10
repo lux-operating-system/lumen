@@ -14,7 +14,7 @@ all: lumen
 
 lumen: $(OBJ)
 	@echo "\x1B[0;1;34m [  LD   ]\x1B[0m lumen"
-	@$(LD) $(LDFLAGS) $(OBJ) -o lumen
+	@$(LD) $(OBJ) -o lumen $(LDFLAGS)
 
 clean:
 	@rm -f lumen $(OBJ)
