@@ -16,6 +16,8 @@
 int kernelsd, lumensd;
 pid_t self;
 
+static int vfs = -1;
+
 /* launchServer(): launches a server from the ramdisk
  * params: name: file name of the server executable
  * returns: pid of the server
@@ -65,5 +67,31 @@ int main(int argc, char **argv) {
     launchServer("tty");        // terminal I/O
     launchServer("procfs");     // /proc
 
+    // allow some time for server start up
+    for(int i = 0; i < 10; i++) sched_yield();
+
+    kernelsd = luxGetKernelSocket();
+
+    struct sockaddr_un peer;
+    socklen_t peerlen;
+    int socket = -1;
+
+    while(vfs <= 0) {
+        // now we need to essentially loop over the lumen socket and wait for
+        // all the servers to be launched
+        memset(&peer, 0, sizeof(struct sockaddr));
+        peerlen = sizeof(struct sockaddr_un);
+        socket = accept(lumensd, (struct sockaddr *) &peer, &peerlen);
+        if(socket > 0) {
+            if(!strcmp(peer.sun_path, "lux:///vfs")) vfs = socket;
+        }
+
+        sched_yield();
+    }
+
+    luxLog(KPRINT_LEVEL_DEBUG, "virtual file system server launched\n");
+    luxLog(KPRINT_LEVEL_WARNING, "TODO: mount devfs and procfs\n");
+
+    // TODO: mount devfs and procfs
     while(1);
 }
