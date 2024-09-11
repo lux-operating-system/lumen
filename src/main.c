@@ -7,8 +7,10 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/mount.h>
 #include <sys/lux/lux.h>        // execrdv
 #include <liblux/liblux.h>
 
@@ -91,8 +93,29 @@ int main(int argc, char **argv) {
     }
 
     luxLog(KPRINT_LEVEL_DEBUG, "virtual file system server launched\n");
-    luxLog(KPRINT_LEVEL_WARNING, "TODO: mount devfs and procfs\n");
 
-    // TODO: mount devfs and procfs
-    while(1);
+    // fork lumen into a second process that will be used to continue the boot
+    // process, while the initial process will handle kernel requests
+    pid_t pid = fork();
+    if(!pid) {
+        // child process
+        luxLog(KPRINT_LEVEL_DEBUG, "mounting /dev ...\n");
+        mount("", "/dev", "devfs", 0, NULL);
+        while(1);
+    }
+
+    luxLog(KPRINT_LEVEL_DEBUG, "attempt to alloc mem\n");
+    SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
+    if(!req) {
+        luxLog(KPRINT_LEVEL_DEBUG, "failed to allocate memory for the backlog\n");
+        exit(-1);
+    }
+
+    while(1) {
+        // receive requests from the kernel here
+        ssize_t s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
+        if(s > 0) {
+            luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
+        }
+    }
 }
