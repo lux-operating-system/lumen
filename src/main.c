@@ -37,9 +37,7 @@ pid_t launchServer(const char *name) {
 
 int main(int argc, char **argv) {
     // this is the first process that runs when the system boots
-    // start by establishing a socket connection with the kernel
-    luxInitLumen();
-
+    // start by opening a socket for the lumen server
     // open another socket for the lumen server
     struct sockaddr_un lumen;
     lumen.sun_family = AF_UNIX;
@@ -55,6 +53,9 @@ int main(int argc, char **argv) {
     // set up lumen as a listener
     status = listen(lumensd, 0);    // use default backlog
     if(status) return -1;
+
+    // then establish connection with the kernel
+    luxInitLumen();
 
     luxLog(KPRINT_LEVEL_DEBUG, "starting launch of lumen core servers...\n");
 
