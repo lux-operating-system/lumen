@@ -59,6 +59,7 @@ int main(int argc, char **argv) {
     // then establish connection with the kernel
     luxInitLumen();
 
+    luxLogf(KPRINT_LEVEL_DEBUG, "lumen is listening on socket %d: %s\n", lumensd, lumen.sun_path);
     luxLog(KPRINT_LEVEL_DEBUG, "starting launch of lumen core servers...\n");
 
     // now begin launching the servers -- these ones will be hard coded because
@@ -69,9 +70,6 @@ int main(int argc, char **argv) {
     launchServer("fb");         // framebuffer output
     launchServer("tty");        // terminal I/O
     launchServer("procfs");     // /proc
-
-    // allow some time for server start up
-    for(int i = 0; i < 10; i++) sched_yield();
 
     kernelsd = luxGetKernelSocket();
 
@@ -94,6 +92,9 @@ int main(int argc, char **argv) {
 
     luxLog(KPRINT_LEVEL_DEBUG, "virtual file system server launched\n");
 
+    // allow some time for the other servers to start up
+    for(int i = 0; i < 30; i++) sched_yield();
+
     // fork lumen into a second process that will be used to continue the boot
     // process, while the initial process will handle kernel requests
     pid_t pid = fork();
@@ -104,7 +105,6 @@ int main(int argc, char **argv) {
         while(1);
     }
 
-    luxLog(KPRINT_LEVEL_DEBUG, "attempt to alloc mem\n");
     SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
     if(!req) {
         luxLog(KPRINT_LEVEL_DEBUG, "failed to allocate memory for the backlog\n");
@@ -112,10 +112,14 @@ int main(int argc, char **argv) {
     }
 
     while(1) {
-        // receive requests from the kernel here
+        // receive requests from the kernel and other servers here
         ssize_t s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
+        if(s <= 0) s = recv(lumensd, req, SERVER_MAX_SIZE, 0);
         if(s > 0) {
             luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
+            memset(req, 0, SERVER_MAX_SIZE);
         }
+
+        sched_yield();  // don't take up unnecessary cpu time
     }
 }
