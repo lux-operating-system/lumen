@@ -13,12 +13,13 @@
 #include <sys/mount.h>
 #include <sys/lux/lux.h>        // execrdv
 #include <liblux/liblux.h>
+#include <lumen/lumen.h>
 
 /* socket descriptors for the kernel connection and for the lumen server */
 int kernelsd, lumensd;
 pid_t self;
 
-static int vfs = -1;
+int vfs = -1;
 
 /* launchServer(): launches a server from the ramdisk
  * params: name: file name of the server executable
@@ -66,10 +67,10 @@ int main(int argc, char **argv) {
     // they are necessary for everything and must be located on the ramdisk as
     // we still don't have any file system or storage drivers at this stage
     launchServer("vfs");        // virtual file system
-    launchServer("devfs");      // /dev
-    launchServer("fb");         // framebuffer output
-    launchServer("tty");        // terminal I/O
-    launchServer("procfs");     // /proc
+    //launchServer("devfs");      // /dev
+    //launchServer("fb");         // framebuffer output
+    //launchServer("tty");        // terminal I/O
+    //launchServer("procfs");     // /proc
 
     kernelsd = luxGetKernelSocket();
 
@@ -102,7 +103,8 @@ int main(int argc, char **argv) {
         // child process
         luxLog(KPRINT_LEVEL_DEBUG, "mounting /dev ...\n");
         mount("", "/dev", "devfs", 0, NULL);
-        while(1);
+
+        while(1) sched_yield();
     }
 
     SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
@@ -112,17 +114,24 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
+    ssize_t s;
+
     while(1) {
         // receive requests from the kernel and responses from other servers here
-        ssize_t s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
-        if(s > 0 && (req->header.command & 0x8000)) {
+        s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
+        if(s > 0) {
             // request from the kernel
-            luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
+            if((req->header.command < 0x8000) || (req->header.command > MAX_SYSCALL_COMMAND))
+                luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
+            else
+                relaySyscallRequest(req);
+
+            memset(req, 0, req->header.length);
         }
 
-        s = recv(lumensd, res, SERVER_MAX_SIZE, 0);
-        if(s > 0 && (res->header.command & 0x8000)) {
-            // response from another server
+        s = recv(vfs, res, SERVER_MAX_SIZE, 0);
+        if(s > 0) {
+            // response from the vfs
             luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall response 0x%X len %d for pid %d\n", req->header.command,req->header.length, req->header.requester);
         }
 
