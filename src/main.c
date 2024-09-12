@@ -125,14 +125,15 @@ int main(int argc, char **argv) {
                 luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
             else
                 relaySyscallRequest(req);
-
-            memset(req, 0, req->header.length);
         }
 
         s = recv(vfs, res, SERVER_MAX_SIZE, 0);
         if(s > 0) {
             // response from the vfs
-            luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall response 0x%X len %d for pid %d\n", req->header.command,req->header.length, req->header.requester);
+            if((res->header.command < 0x8000) || (req->header.command > MAX_SYSCALL_COMMAND))
+                luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall response 0x%X len %d for pid %d\n", res->header.command,res->header.length, res->header.requester);
+            else
+                luxSendKernel(res);
         }
 
         if(s <= 0) sched_yield();
