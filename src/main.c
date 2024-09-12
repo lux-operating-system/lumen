@@ -106,7 +106,8 @@ int main(int argc, char **argv) {
     }
 
     SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
-    if(!req) {
+    SyscallHeader *res = calloc(1, SERVER_MAX_SIZE);
+    if(!req || !res) {
         luxLog(KPRINT_LEVEL_DEBUG, "failed to allocate memory for the backlog\n");
         exit(-1);
     }
@@ -114,17 +115,17 @@ int main(int argc, char **argv) {
     while(1) {
         // receive requests from the kernel and responses from other servers here
         ssize_t s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
-        if(s <= 0) s = recv(lumensd, req, SERVER_MAX_SIZE, 0);
         if(s > 0 && (req->header.command & 0x8000)) {
-            if(!req->header.response) {
-                // request from the kernel
-                luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
-            } else {
-                // response from another server
-                luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall response 0x%X len %d for pid %d\n", req->header.command,req->header.length, req->header.requester);
-            }
+            // request from the kernel
+            luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
         }
 
-        sched_yield();  // don't take up unnecessary cpu time
+        s = recv(lumensd, res, SERVER_MAX_SIZE, 0);
+        if(s > 0 && (res->header.command & 0x8000)) {
+            // response from another server
+            luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall response 0x%X len %d for pid %d\n", req->header.command,req->header.length, req->header.requester);
+        }
+
+        if(s <= 0) sched_yield();
     }
 }
