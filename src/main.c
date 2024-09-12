@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
         sched_yield();
     }
 
-    luxLog(KPRINT_LEVEL_DEBUG, "virtual file system server launched\n");
+    luxLogf(KPRINT_LEVEL_DEBUG, "connected to virtual file system at socket %d\n", vfs);
 
     // allow some time for the other servers to start up
     for(int i = 0; i < 30; i++) sched_yield();
@@ -112,12 +112,17 @@ int main(int argc, char **argv) {
     }
 
     while(1) {
-        // receive requests from the kernel and other servers here
+        // receive requests from the kernel and responses from other servers here
         ssize_t s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
         if(s <= 0) s = recv(lumensd, req, SERVER_MAX_SIZE, 0);
-        if(s > 0) {
-            luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
-            memset(req, 0, SERVER_MAX_SIZE);
+        if(s > 0 && (req->header.command & 0x8000)) {
+            if(!req->header.response) {
+                // request from the kernel
+                luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
+            } else {
+                // response from another server
+                luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall response 0x%X len %d for pid %d\n", req->header.command,req->header.length, req->header.requester);
+            }
         }
 
         sched_yield();  // don't take up unnecessary cpu time
