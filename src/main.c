@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
     luxLogf(KPRINT_LEVEL_DEBUG, "connected to virtual file system at socket %d\n", vfs);
 
     // allow some time for the other servers to start up
-    for(int i = 0; i < 30; i++) sched_yield();
+    for(int i = 0; i < 80; i++) sched_yield();
 
     // fork lumen into a second process that will be used to continue the boot
     // process, while the initial process will handle kernel requests
@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
         mount("", "/dev", "devfs", 0, NULL);
         luxLog(KPRINT_LEVEL_DEBUG, "mounted\n");
 
-        exit(0);
+        while(1);
     }
 
     SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
@@ -121,7 +121,7 @@ int main(int argc, char **argv) {
     while(1) {
         // receive requests from the kernel and responses from other servers here
         s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
-        if(s > 0) {
+        if(s > 0 && s < SERVER_MAX_SIZE) {
             // request from the kernel
             if((req->header.command < 0x8000) || (req->header.command > MAX_SYSCALL_COMMAND))
                 luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
@@ -130,9 +130,9 @@ int main(int argc, char **argv) {
         }
 
         s = recv(vfs, res, SERVER_MAX_SIZE, 0);
-        if(s > 0) {
+        if(s > 0 && s < SERVER_MAX_SIZE) {
             // response from the vfs
-            if((res->header.command < 0x8000) || (req->header.command > MAX_SYSCALL_COMMAND))
+            if((res->header.command < 0x8000) || (res->header.command > MAX_SYSCALL_COMMAND))
                 luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall response 0x%X len %d for pid %d\n", res->header.command,res->header.length, res->header.requester);
             else
                 luxSendKernel(res);
