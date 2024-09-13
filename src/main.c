@@ -30,6 +30,7 @@ pid_t launchServer(const char *name) {
     pid_t pid = fork();
     if(!pid) {
         // child process
+        luxLogf(KPRINT_LEVEL_DEBUG, "starting server '%s'\n", name);
         execrdv(name, NULL);
         exit(-1);
     }
@@ -67,7 +68,7 @@ int main(int argc, char **argv) {
     // they are necessary for everything and must be located on the ramdisk as
     // we still don't have any file system or storage drivers at this stage
     launchServer("vfs");        // virtual file system
-    //launchServer("devfs");      // /dev
+    launchServer("devfs");      // /dev
     //launchServer("fb");         // framebuffer output
     //launchServer("tty");        // terminal I/O
     //launchServer("procfs");     // /proc
@@ -103,8 +104,9 @@ int main(int argc, char **argv) {
         // child process
         luxLog(KPRINT_LEVEL_DEBUG, "mounting /dev ...\n");
         mount("", "/dev", "devfs", 0, NULL);
+        luxLog(KPRINT_LEVEL_DEBUG, "mounted\n");
 
-        while(1) sched_yield();
+        exit(0);
     }
 
     SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
