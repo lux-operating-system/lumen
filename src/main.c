@@ -65,14 +65,9 @@ int main(int argc, char **argv) {
     luxLogf(KPRINT_LEVEL_DEBUG, "lumen is listening on socket %d: %s\n", lumensd, lumen.sun_path);
     luxLog(KPRINT_LEVEL_DEBUG, "starting launch of lumen core servers...\n");
 
-    // now begin launching the servers -- these ones will be hard coded because
-    // they are necessary for everything and must be located on the ramdisk as
-    // we still don't have any file system or storage drivers at this stage
-    launchServer("vfs");        // virtual file system
-    launchServer("devfs");      // /dev
-    //launchServer("fb");         // framebuffer output
-    //launchServer("tty");        // terminal I/O
-    //launchServer("procfs");     // /proc
+    // now begin launching the servers -- start with the vfs because everything
+    // else will depend on it, and then move to devfs and procfs
+    launchServer("vfs");
 
     kernelsd = luxGetKernelSocket();
 
@@ -95,6 +90,12 @@ int main(int argc, char **argv) {
 
     luxLogf(KPRINT_LEVEL_DEBUG, "connected to virtual file system at socket %d\n", vfs);
 
+    // now start the servers that depend on the vfs
+    launchServer("devfs");          // /dev
+    //launchServer("procfs");       // /proc
+    //launchServer("lfb");          // linear frame buffer
+    //launchServer("tty");          // terminal emulator
+
     // allow some time for the other servers to start up
     for(int i = 0; i < 100; i++) sched_yield();
 
@@ -108,7 +109,10 @@ int main(int argc, char **argv) {
 
         struct stat buffer;
         if(!stat("/dev/null", &buffer)) {       // test
-            luxLogf(KPRINT_LEVEL_DEBUG, "stat: mode: 0x%X\n", buffer.st_mode);
+            luxLogf(KPRINT_LEVEL_DEBUG, "test stat() for /dev/null: owner 0x%X (root) mode: 0x%X (%s%s%s%s%s%s%s%s%s)\n", buffer.st_uid, buffer.st_mode,
+                buffer.st_mode & S_IRUSR ? "r" : "-", buffer.st_mode & S_IWUSR ? "w" : "-", buffer.st_mode & S_IXUSR ? "x" : "-",
+                buffer.st_mode & S_IRGRP ? "r" : "-", buffer.st_mode & S_IWGRP ? "w" : "-", buffer.st_mode & S_IXGRP ? "x" : "-",
+                buffer.st_mode & S_IROTH ? "r" : "-", buffer.st_mode & S_IWOTH ? "w" : "-", buffer.st_mode & S_IXOTH ? "x" : "-");
         }
 
         while(1);
@@ -142,7 +146,5 @@ int main(int argc, char **argv) {
             else
                 luxSendKernel(res);
         }
-
-        if(s <= 0) sched_yield();
     }
 }
