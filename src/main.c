@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 #include <sys/lux/lux.h>        // execrdv
 #include <liblux/liblux.h>
 #include <lumen/lumen.h>
@@ -95,7 +96,7 @@ int main(int argc, char **argv) {
     luxLogf(KPRINT_LEVEL_DEBUG, "connected to virtual file system at socket %d\n", vfs);
 
     // allow some time for the other servers to start up
-    for(int i = 0; i < 80; i++) sched_yield();
+    for(int i = 0; i < 100; i++) sched_yield();
 
     // fork lumen into a second process that will be used to continue the boot
     // process, while the initial process will handle kernel requests
@@ -104,7 +105,11 @@ int main(int argc, char **argv) {
         // child process
         luxLog(KPRINT_LEVEL_DEBUG, "mounting /dev ...\n");
         mount("", "/dev", "devfs", 0, NULL);
-        luxLog(KPRINT_LEVEL_DEBUG, "mounted\n");
+
+        struct stat buffer;
+        if(!stat("/dev/null", &buffer)) {       // test
+            luxLogf(KPRINT_LEVEL_DEBUG, "stat: mode: 0x%X\n", buffer.st_mode);
+        }
 
         while(1);
     }
