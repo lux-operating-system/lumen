@@ -104,18 +104,10 @@ int main(int argc, char **argv) {
     pid_t pid = fork();
     if(!pid) {
         // child process
-        luxLog(KPRINT_LEVEL_DEBUG, "mounting /dev ...\n");
         mount("", "/dev", "devfs", 0, NULL);
+        //mount("", "/proc", "procfs", 0, NULL);
 
-        struct stat buffer;
-        if(!stat("/dev/null", &buffer)) {       // test
-            luxLogf(KPRINT_LEVEL_DEBUG, "test stat() for /dev/null: owner 0x%X (root) mode: 0x%X (%s%s%s%s%s%s%s%s%s)\n", buffer.st_uid, buffer.st_mode,
-                buffer.st_mode & S_IRUSR ? "r" : "-", buffer.st_mode & S_IWUSR ? "w" : "-", buffer.st_mode & S_IXUSR ? "x" : "-",
-                buffer.st_mode & S_IRGRP ? "r" : "-", buffer.st_mode & S_IWGRP ? "w" : "-", buffer.st_mode & S_IXGRP ? "x" : "-",
-                buffer.st_mode & S_IROTH ? "r" : "-", buffer.st_mode & S_IWOTH ? "w" : "-", buffer.st_mode & S_IXOTH ? "x" : "-");
-        }
-
-        while(1);
+        exit(0);
     }
 
     SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
