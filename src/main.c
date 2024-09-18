@@ -15,6 +15,7 @@
 #include <sys/lux/lux.h>        // execrdv
 #include <liblux/liblux.h>
 #include <lumen/lumen.h>
+#include <fnctl.h>
 
 /* socket descriptors for the kernel connection and for the lumen server */
 int kernelsd, lumensd;
@@ -73,14 +74,13 @@ int main(int argc, char **argv) {
 
     struct sockaddr_un peer;
     socklen_t peerlen;
-    int socket = -1;
 
     while(vfs <= 0) {
         // now we need to essentially loop over the lumen socket and wait for
         // all the servers to be launched
         memset(&peer, 0, sizeof(struct sockaddr));
         peerlen = sizeof(struct sockaddr_un);
-        socket = accept(lumensd, (struct sockaddr *) &peer, &peerlen);
+        int socket = accept(lumensd, (struct sockaddr *) &peer, &peerlen);
         if(socket > 0) {
             if(!strcmp(peer.sun_path, "lux:///vfs")) vfs = socket;
         }
@@ -107,7 +107,27 @@ int main(int argc, char **argv) {
         mount("", "/dev", "devfs", 0, NULL);
         //mount("", "/proc", "procfs", 0, NULL);
 
-        exit(0);
+        struct stat buffer;
+        if(!stat("/dev/null", &buffer)) {       // test
+            luxLogf(KPRINT_LEVEL_DEBUG, "test stat() for /dev/null: owner 0x%X mode: 0x%X (%s%s%s%s%s%s%s%s%s)\n", buffer.st_uid, buffer.st_mode,
+                buffer.st_mode & S_IRUSR ? "r" : "-", buffer.st_mode & S_IWUSR ? "w" : "-", buffer.st_mode & S_IXUSR ? "x" : "-",
+                buffer.st_mode & S_IRGRP ? "r" : "-", buffer.st_mode & S_IWGRP ? "w" : "-", buffer.st_mode & S_IXGRP ? "x" : "-",
+                buffer.st_mode & S_IROTH ? "r" : "-", buffer.st_mode & S_IWOTH ? "w" : "-", buffer.st_mode & S_IXOTH ? "x" : "-");
+        }
+
+        luxLogf(KPRINT_LEVEL_DEBUG, "attempt to open /dev/random\n");
+
+        // test
+        int fd = open("/dev/random", O_RDONLY);
+        luxLogf(KPRINT_LEVEL_DEBUG, "opened file descriptor %d\n", fd);
+
+        unsigned char buf[4];
+        ssize_t size = read(fd, &buf, 4);
+
+        luxLogf(KPRINT_LEVEL_DEBUG, "read() returned: %d bytes read\n", size);
+        luxLogf(KPRINT_LEVEL_DEBUG, "read() test buffer: %02X %02X %02X %02X\n", buf[0], buf[1], buf[2], buf[3]);
+
+        while(1);
     }
 
     SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
@@ -117,11 +137,9 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
-    ssize_t s;
-
     while(1) {
         // receive requests from the kernel and responses from other servers here
-        s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
+        ssize_t s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
         if(s > 0 && s < SERVER_MAX_SIZE) {
             // request from the kernel
             if((req->header.command < 0x8000) || (req->header.command > MAX_SYSCALL_COMMAND))
