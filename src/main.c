@@ -99,6 +99,8 @@ int main(int argc, char **argv) {
     // allow some time for the other servers to start up
     for(int i = 0; i < 100; i++) sched_yield();
 
+    launchServer("ps2");            // PS/2 keyboard and mouse
+
     // fork lumen into a second process that will be used to continue the boot
     // process, while the initial process will handle kernel requests
     pid_t pid = fork();
@@ -107,27 +109,7 @@ int main(int argc, char **argv) {
         mount("", "/dev", "devfs", 0, NULL);
         //mount("", "/proc", "procfs", 0, NULL);
 
-        struct stat buffer;
-        if(!stat("/dev/null", &buffer)) {       // test
-            luxLogf(KPRINT_LEVEL_DEBUG, "test stat() for /dev/null: owner 0x%X mode: 0x%X (%s%s%s%s%s%s%s%s%s)\n", buffer.st_uid, buffer.st_mode,
-                buffer.st_mode & S_IRUSR ? "r" : "-", buffer.st_mode & S_IWUSR ? "w" : "-", buffer.st_mode & S_IXUSR ? "x" : "-",
-                buffer.st_mode & S_IRGRP ? "r" : "-", buffer.st_mode & S_IWGRP ? "w" : "-", buffer.st_mode & S_IXGRP ? "x" : "-",
-                buffer.st_mode & S_IROTH ? "r" : "-", buffer.st_mode & S_IWOTH ? "w" : "-", buffer.st_mode & S_IXOTH ? "x" : "-");
-        }
-
-        luxLogf(KPRINT_LEVEL_DEBUG, "attempt to open /dev/random\n");
-
-        // test
-        int fd = open("/dev/random", O_RDONLY);
-        luxLogf(KPRINT_LEVEL_DEBUG, "opened file descriptor %d\n", fd);
-
-        unsigned char buf[4];
-        ssize_t size = read(fd, &buf, 4);
-
-        luxLogf(KPRINT_LEVEL_DEBUG, "read() returned: %d bytes read\n", size);
-        luxLogf(KPRINT_LEVEL_DEBUG, "read() test buffer: %02X %02X %02X %02X\n", buf[0], buf[1], buf[2], buf[3]);
-
-        while(1);
+        exit(0);
     }
 
     SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
