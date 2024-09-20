@@ -57,7 +57,7 @@ int launchServer(const char *name, struct sockaddr_un *addr) {
     for(;;) {
         ssize_t s = recv(sd, &msg, sizeof(MessageHeader), 0);
         if((s > 0) && (s <= sizeof(MessageHeader)) && (msg.command == COMMAND_LUMEN_READY)) {
-            luxLogf(KPRINT_LEVEL_DEBUG, "started server '%s'\n", name);
+            luxLogf(KPRINT_LEVEL_DEBUG, "server '%s' started with pid %d\n", name, pid);
             break;
         }
     }
