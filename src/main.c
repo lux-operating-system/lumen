@@ -24,22 +24,43 @@ pid_t self;
 int vfs = -1;
 
 /* launchServer(): launches a server from the ramdisk
- * params: name: file name of the server executable
- * returns: pid of the server
+ * params: name - file name of the server executable
+ * params: addr - destination to store the address of the server, NULL if not needed
+ * returns: socket connection of the server, -1 on fail
  */
 
-pid_t launchServer(const char *name) {
+int launchServer(const char *name, struct sockaddr_un *addr) {
     pid_t pid = fork();
     if(!pid) {
         // child process
         luxLogf(KPRINT_LEVEL_DEBUG, "starting server '%s'\n", name);
         execrdv(name, NULL);
-        exit(-1);
+        luxLogf(KPRINT_LEVEL_ERROR, "unable to start server '%s'\n", name);
+        exit(-1);   // unreachable on success
     }
 
     // parent
-    return pid;
+    if(pid < 0) return -1;  // fork failed
+
+    // now wait for the server to actually start
+    int sd = -1;
+    struct sockaddr_un peer;
+    socklen_t peerlen = sizeof(struct sockaddr_un);
+
+    while(sd < 0) {
+        sd = accept(lumensd, (struct sockaddr *) &peer, &peerlen);
+        if(sd > 0 && !strcmp((const char *) &peer.sun_path[7], name)) break;
+        else sched_yield();
+    }
+
+    if(addr) memcpy(addr, &peer, peerlen);
+    return sd;
 }
+
+/* main(): lumen's entry point
+ * this function completes the boot process, takes no parameters, and should
+ * never return - the kernel panics if lumen terminates
+ */
 
 int main(int argc, char **argv) {
     // this is the first process that runs when the system boots
@@ -68,38 +89,19 @@ int main(int argc, char **argv) {
 
     // now begin launching the servers -- start with the vfs because everything
     // else will depend on it, and then move to devfs and procfs
-    launchServer("vfs");
-
-    kernelsd = luxGetKernelSocket();
-
-    struct sockaddr_un peer;
-    socklen_t peerlen;
-
-    while(vfs <= 0) {
-        // now we need to essentially loop over the lumen socket and wait for
-        // all the servers to be launched
-        memset(&peer, 0, sizeof(struct sockaddr));
-        peerlen = sizeof(struct sockaddr_un);
-        int socket = accept(lumensd, (struct sockaddr *) &peer, &peerlen);
-        if(socket > 0) {
-            if(!strcmp(peer.sun_path, "lux:///vfs")) vfs = socket;
-        }
-
-        sched_yield();
-    }
-
+    vfs = launchServer("vfs", NULL);
     luxLogf(KPRINT_LEVEL_DEBUG, "connected to virtual file system at socket %d\n", vfs);
 
     // now start the servers that depend on the vfs
-    launchServer("devfs");          // /dev
+    launchServer("devfs", NULL);    // /dev
     //launchServer("procfs");       // /proc
+
+    // servers that depend on /dev
+    launchServer("kbd", NULL);      // generic keyboard interface
     //launchServer("lfb");          // linear frame buffer
     //launchServer("tty");          // terminal emulator
 
-    // allow some time for the other servers to start up
-    for(int i = 0; i < 100; i++) sched_yield();
-
-    launchServer("ps2");            // PS/2 keyboard and mouse
+    launchServer("ps2", NULL);      // PS/2 keyboard and mouse
 
     // fork lumen into a second process that will be used to continue the boot
     // process, while the initial process will handle kernel requests
@@ -119,9 +121,10 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
+    kernelsd = luxGetKernelSocket();
     while(1) {
         // receive requests from the kernel and responses from other servers here
-        ssize_t s = recv(luxGetKernelSocket(), req, SERVER_MAX_SIZE, 0);
+        ssize_t s = recv(kernelsd, req, SERVER_MAX_SIZE, 0);
         if(s > 0 && s < SERVER_MAX_SIZE) {
             // request from the kernel
             if((req->header.command < 0x8000) || (req->header.command > MAX_SYSCALL_COMMAND))
