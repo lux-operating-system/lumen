@@ -33,7 +33,6 @@ int launchServer(const char *name, struct sockaddr_un *addr) {
     pid_t pid = fork();
     if(!pid) {
         // child process
-        luxLogf(KPRINT_LEVEL_DEBUG, "starting server '%s'\n", name);
         execrdv(name, NULL);
         luxLogf(KPRINT_LEVEL_ERROR, "unable to start server '%s'\n", name);
         exit(-1);   // unreachable on success
@@ -51,6 +50,16 @@ int launchServer(const char *name, struct sockaddr_un *addr) {
         sd = accept(lumensd, (struct sockaddr *) &peer, &peerlen);
         if(sd > 0 && !strcmp((const char *) &peer.sun_path[7], name)) break;
         else sched_yield();
+    }
+
+    // wait for the ready message
+    MessageHeader msg;
+    for(;;) {
+        ssize_t s = recv(sd, &msg, sizeof(MessageHeader), 0);
+        if((s > 0) && (s <= sizeof(MessageHeader)) && (msg.command == COMMAND_LUMEN_READY)) {
+            luxLogf(KPRINT_LEVEL_DEBUG, "started server '%s'\n", name);
+            break;
+        }
     }
 
     if(addr) memcpy(addr, &peer, peerlen);
