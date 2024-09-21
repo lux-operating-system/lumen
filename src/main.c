@@ -119,6 +119,15 @@ int main(int argc, char **argv) {
         mount("", "/dev", "devfs", 0, NULL);
         //mount("", "/proc", "procfs", 0, NULL);
 
+        // test frame buffer
+        int fd = open("/dev/lfb0", O_RDWR);
+        luxLogf(KPRINT_LEVEL_DEBUG, "opened /dev/lfb0 with fd %d\n", fd);
+
+        uint32_t *testbuf = malloc(1280*800*4);
+        for(int i = 0; i < 1280*800; i++) testbuf[i] = 0x00FF00;       // green
+
+        write(fd, testbuf, 1280*128*4);
+        close(fd);
         exit(0);
     }
 
@@ -133,7 +142,7 @@ int main(int argc, char **argv) {
     while(1) {
         // receive requests from the kernel and responses from other servers here
         ssize_t s = recv(kernelsd, req, SERVER_MAX_SIZE, MSG_PEEK);     // peek to check size
-        if(s > 0 && s < SERVER_MAX_SIZE) {
+        if(s > 0 && s <= SERVER_MAX_SIZE) {
             if(req->header.length > SERVER_MAX_SIZE) {
                 void *newptr = realloc(req, req->header.length);
                 if(!newptr) {
