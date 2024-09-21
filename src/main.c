@@ -57,7 +57,7 @@ int launchServer(const char *name, struct sockaddr_un *addr) {
     for(;;) {
         ssize_t s = recv(sd, &msg, sizeof(MessageHeader), 0);
         if((s > 0) && (s <= sizeof(MessageHeader)) && (msg.command == COMMAND_LUMEN_READY)) {
-            luxLogf(KPRINT_LEVEL_DEBUG, "server '%s' started with pid %d\n", name, pid);
+            luxLogf(KPRINT_LEVEL_DEBUG, "completed startup of server '%s' with pid %d\n", name, pid);
             break;
         }
     }
@@ -107,9 +107,8 @@ int main(int argc, char **argv) {
 
     // servers that depend on /dev
     launchServer("kbd", NULL);      // generic keyboard interface
-    //launchServer("lfb");          // linear frame buffer
-    //launchServer("tty");          // terminal emulator
-
+    launchServer("lfb", NULL);      // linear frame buffer
+    //launchServer("ptty", NULL);   // psuedo-terminal emulator
     launchServer("ps2", NULL);      // PS/2 keyboard and mouse
 
     // fork lumen into a second process that will be used to continue the boot
