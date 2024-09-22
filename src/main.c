@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     // servers that depend on /dev
     launchServer("kbd", NULL);      // generic keyboard interface
     launchServer("lfb", NULL);      // linear frame buffer
-    //launchServer("ptty", NULL);   // psuedo-terminal emulator
+    launchServer("pty", NULL);      // psuedo-terminal devices
     launchServer("ps2", NULL);      // PS/2 keyboard and mouse
 
     // fork lumen into a second process that will be used to continue the boot
@@ -119,15 +119,6 @@ int main(int argc, char **argv) {
         mount("", "/dev", "devfs", 0, NULL);
         //mount("", "/proc", "procfs", 0, NULL);
 
-        // test frame buffer
-        int fd = open("/dev/lfb0", O_RDWR);
-        luxLogf(KPRINT_LEVEL_DEBUG, "opened /dev/lfb0 with fd %d\n", fd);
-
-        uint32_t *testbuf = malloc(1280*800*4);
-        for(int i = 0; i < 1280*800; i++) testbuf[i] = 0x00FF00;       // green
-
-        write(fd, testbuf, 1280*128*4);
-        close(fd);
         exit(0);
     }
 
