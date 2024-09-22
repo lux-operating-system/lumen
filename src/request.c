@@ -40,4 +40,5 @@ static int syscallRelayTable[] = {
     RELAY_VFS,          // 4 - open()
     RELAY_VFS,          // 5 - read()
     RELAY_VFS,          // 6 - write()
+    RELAY_VFS,          // 7 - ioctl()
 };
