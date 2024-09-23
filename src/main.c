@@ -119,38 +119,8 @@ int main(int argc, char **argv) {
         mount("", "/dev", "devfs", 0, NULL);
         //mount("", "/proc", "procfs", 0, NULL);
 
-        // test pty
-        luxLogf(KPRINT_LEVEL_DEBUG, "attempt to open master terminal multiplexer /dev/ptmx\n");
-        int master = open("/dev/ptmx", O_RDWR);
-        luxLogf(KPRINT_LEVEL_DEBUG, "opened master with fd %d\n", master);
-
-        // try to find the slave terminal
-        char *slaveName = ptsname(master);
-        luxLogf(KPRINT_LEVEL_DEBUG, "slave pty is at %s\n", slaveName);
-        
-        // grant and unlock slave pt
-        grantpt(master);
-        unlockpt(master);
-
-        // now we can open the slave
-        int slave = open(slaveName, O_RDWR);
-        luxLogf(KPRINT_LEVEL_DEBUG, "opened slave with fd %d\n", slave);
-
-        luxLogf(KPRINT_LEVEL_DEBUG, "attempting to write 'hello world!' to the slave\n");
-
-        ssize_t s = write(slave, "hello world!", strlen("hello world!"));
-        luxLogf(KPRINT_LEVEL_DEBUG, "write() returned %d\n", s);
-
-        luxLogf(KPRINT_LEVEL_DEBUG, "attempting to read from master...\n");
-
-        char buffer[13];
-        memset(buffer, 0, 13);
-
-        s = read(master, buffer, 12);
-        luxLogf(KPRINT_LEVEL_DEBUG, "read() returned %d\n", s);
-        luxLogf(KPRINT_LEVEL_DEBUG, "read buffer: %s\n", buffer);
-
-        for(;;);
+        // launch the terminal emulator
+        execrdv("nterm", NULL);
 
         exit(0);
     }
