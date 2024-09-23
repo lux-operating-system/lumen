@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 
     // now start the servers that depend on the vfs
     launchServer("devfs", NULL);    // /dev
-    //launchServer("procfs");       // /proc
+    launchServer("procfs", NULL);   // /proc
 
     // servers that depend on /dev
     launchServer("kbd", NULL);      // generic keyboard interface
