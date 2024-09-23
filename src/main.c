@@ -48,7 +48,7 @@ int launchServer(const char *name, struct sockaddr_un *addr) {
 
     while(sd < 0) {
         sd = accept(lumensd, (struct sockaddr *) &peer, &peerlen);
-        if(sd > 0 && !strcmp((const char *) &peer.sun_path[7], name)) break;
+        if(sd >= 0 && !strcmp((const char *) &peer.sun_path[7], name)) break;
         else sched_yield();
     }
 
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
     lumen.sun_family = AF_UNIX;
     strcpy(lumen.sun_path, SERVER_LUMEN_PATH);
 
-    lumensd = socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+    lumensd = socket(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
     if(lumensd < 0) return -1;
 
     // bind local address
@@ -118,6 +118,39 @@ int main(int argc, char **argv) {
         // child process
         mount("", "/dev", "devfs", 0, NULL);
         //mount("", "/proc", "procfs", 0, NULL);
+
+        // test pty
+        luxLogf(KPRINT_LEVEL_DEBUG, "attempt to open master terminal multiplexer /dev/ptmx\n");
+        int master = open("/dev/ptmx", O_RDWR);
+        luxLogf(KPRINT_LEVEL_DEBUG, "opened master with fd %d\n", master);
+
+        // try to find the slave terminal
+        char *slaveName = ptsname(master);
+        luxLogf(KPRINT_LEVEL_DEBUG, "slave pty is at %s\n", slaveName);
+        
+        // grant and unlock slave pt
+        grantpt(master);
+        unlockpt(master);
+
+        // now we can open the slave
+        int slave = open(slaveName, O_RDWR);
+        luxLogf(KPRINT_LEVEL_DEBUG, "opened slave with fd %d\n", slave);
+
+        luxLogf(KPRINT_LEVEL_DEBUG, "attempting to write 'hello world!' to the slave\n");
+
+        ssize_t s = write(slave, "hello world!", strlen("hello world!"));
+        luxLogf(KPRINT_LEVEL_DEBUG, "write() returned %d\n", s);
+
+        luxLogf(KPRINT_LEVEL_DEBUG, "attempting to read from master...\n");
+
+        char buffer[13];
+        memset(buffer, 0, 13);
+
+        s = read(master, buffer, 12);
+        luxLogf(KPRINT_LEVEL_DEBUG, "read() returned %d\n", s);
+        luxLogf(KPRINT_LEVEL_DEBUG, "read buffer: %s\n", buffer);
+
+        for(;;);
 
         exit(0);
     }
