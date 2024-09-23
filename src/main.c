@@ -117,10 +117,10 @@ int main(int argc, char **argv) {
     if(!pid) {
         // child process
         mount("", "/dev", "devfs", 0, NULL);
-        //mount("", "/proc", "procfs", 0, NULL);
+        mount("", "/proc", "procfs", 0, NULL);
 
         // launch the terminal emulator
-        execrdv("nterm", NULL);
+        //execrdv("nterm", NULL);
 
         exit(0);
     }
