@@ -110,6 +110,7 @@ int main(int argc, char **argv) {
     launchServer("lfb", NULL);      // linear frame buffer
     launchServer("pty", NULL);      // psuedo-terminal devices
     launchServer("ps2", NULL);      // PS/2 keyboard and mouse
+    launchServer("pci", NULL);      // PCI
 
     // fork lumen into a second process that will be used to continue the boot
     // process, while the initial process will handle kernel requests
