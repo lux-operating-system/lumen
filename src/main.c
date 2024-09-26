@@ -75,7 +75,6 @@ int launchServer(const char *name, struct sockaddr_un *addr) {
 int main(int argc, char **argv) {
     // this is the first process that runs when the system boots
     // start by opening a socket for the lumen server
-    // open another socket for the lumen server
     struct sockaddr_un lumen;
     lumen.sun_family = AF_UNIX;
     strcpy(lumen.sun_path, SERVER_LUMEN_PATH);
@@ -97,88 +96,34 @@ int main(int argc, char **argv) {
     luxLogf(KPRINT_LEVEL_DEBUG, "lumen is listening on socket %d: %s\n", lumensd, lumen.sun_path);
     luxLog(KPRINT_LEVEL_DEBUG, "starting launch of lumen core servers...\n");
 
-    // now begin launching the servers -- start with the vfs because everything
-    // else will depend on it, and then move to devfs and procfs
+    // begin launching the servers -- start with the vfs because everything
+    // else will depend on it
     vfs = launchServer("vfs", NULL);
     luxLogf(KPRINT_LEVEL_DEBUG, "connected to virtual file system at socket %d\n", vfs);
+
+    // fork into a second process that will be used for the lumen server
+    // this has to be done AFTER the vfs is loaded because the server will need
+    // access to the vfs socket descriptor to relay other syscalls
+
+    // TODO: replace this fork() with a POSIX thread after i implement them
+    pid_t pid = fork();
+    if(!pid) return server();
 
     // now start the servers that depend on the vfs
     launchServer("devfs", NULL);    // /dev
     launchServer("procfs", NULL);   // /proc
 
-    // servers that depend on /dev
+    // mount devfs and procfs
+    mount("", "/dev", "devfs", 0, NULL);
+    mount("", "/proc", "procfs", 0, NULL);
+
+    // device drivers
     launchServer("kbd", NULL);      // generic keyboard interface
+    launchServer("ps2", NULL);      // PS/2 keyboard and mouse
     launchServer("lfb", NULL);      // linear frame buffer
     launchServer("pty", NULL);      // psuedo-terminal devices
-    launchServer("pci", NULL);      // PCI
-    launchServer("ps2", NULL);      // PS/2 keyboard and mouse
-    launchServer("nvme", NULL);     // NVMe driver
+    launchServer("pci", NULL);      // PCI bus
+    launchServer("nvme", NULL);     // NVMe SSDs
 
-    // fork lumen into a second process that will be used to continue the boot
-    // process, while the initial process will handle kernel requests
-    pid_t pid = fork();
-    if(!pid) {
-        // child process
-        mount("", "/dev", "devfs", 0, NULL);
-        mount("", "/proc", "procfs", 0, NULL);
-
-        // launch the terminal emulator
-        //execrdv("nterm", NULL);
-
-        exit(0);
-    }
-
-    SyscallHeader *req = calloc(1, SERVER_MAX_SIZE);
-    SyscallHeader *res = calloc(1, SERVER_MAX_SIZE);
-    if(!req || !res) {
-        luxLog(KPRINT_LEVEL_DEBUG, "failed to allocate memory for the backlog\n");
-        exit(-1);
-    }
-
-    kernelsd = luxGetKernelSocket();
-    while(1) {
-        // receive requests from the kernel and responses from other servers here
-        ssize_t s = recv(kernelsd, req, SERVER_MAX_SIZE, MSG_PEEK);     // peek to check size
-        if(s > 0 && s <= SERVER_MAX_SIZE) {
-            if(req->header.length > SERVER_MAX_SIZE) {
-                void *newptr = realloc(req, req->header.length);
-                if(!newptr) {
-                    luxLogf(KPRINT_LEVEL_ERROR, "failed to allocate memory for message handling\n");
-                    exit(-1);
-                }
-
-                req = newptr;
-            }
-
-            // and read the actual size
-            recv(kernelsd, req, req->header.length, 0);
-
-            // request from the kernel
-            if((req->header.command < 0x8000) || (req->header.command > MAX_SYSCALL_COMMAND))
-                luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall request 0x%X len %d from pid %d\n", req->header.command,req->header.length, req->header.requester);
-            else
-                relaySyscallRequest(req);
-        }
-
-        s = recv(vfs, res, SERVER_MAX_SIZE, MSG_PEEK);  // peek to check size
-        if(s > 0 && s < SERVER_MAX_SIZE) {
-            if(res->header.length > SERVER_MAX_SIZE) {
-                void *newptr = realloc(res, res->header.length);
-                if(!newptr) {
-                    luxLogf(KPRINT_LEVEL_ERROR, "failed to allocate memory for message handling\n");
-                    exit(-1);
-                }
-
-                res = newptr;
-            }
-
-            recv(vfs, res, res->header.length, 0);
-
-            // response from the vfs
-            if((res->header.command < 0x8000) || (res->header.command > MAX_SYSCALL_COMMAND))
-                luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall response 0x%X len %d for pid %d\n", res->header.command,res->header.length, res->header.requester);
-            else
-                luxSendKernel(res);
-        }
-    }
+    for(;;) sched_yield();          // kernel will panic if lumen exits!
 }

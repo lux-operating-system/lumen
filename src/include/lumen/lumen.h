@@ -16,3 +16,4 @@ extern int vfs;
 
 void relaySyscallRequest(SyscallHeader *);
 void relaySyscallResponse(SyscallHeader *);
+int server();
