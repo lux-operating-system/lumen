@@ -16,6 +16,7 @@
 #include <liblux/liblux.h>
 #include <lumen/lumen.h>
 #include <fnctl.h>
+#include <dirent.h>
 
 /* socket descriptors for the kernel connection and for the lumen server */
 int kernelsd, lumensd;
@@ -109,8 +110,9 @@ int main(int argc, char **argv) {
     launchServer("kbd", NULL);      // generic keyboard interface
     launchServer("lfb", NULL);      // linear frame buffer
     launchServer("pty", NULL);      // psuedo-terminal devices
-    launchServer("ps2", NULL);      // PS/2 keyboard and mouse
     launchServer("pci", NULL);      // PCI
+    launchServer("ps2", NULL);      // PS/2 keyboard and mouse
+    launchServer("nvme", NULL);     // NVMe driver
 
     // fork lumen into a second process that will be used to continue the boot
     // process, while the initial process will handle kernel requests
