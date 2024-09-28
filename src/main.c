@@ -123,6 +123,7 @@ int main(int argc, char **argv) {
     launchServer("lfb", NULL);      // linear frame buffer
     launchServer("pty", NULL);      // psuedo-terminal devices
     launchServer("pci", NULL);      // PCI bus
+    launchServer("sdev", NULL);     // generic storage device interface
     launchServer("nvme", NULL);     // NVMe SSDs
 
     for(;;) sched_yield();          // kernel will panic if lumen exits!
