@@ -112,6 +112,7 @@ int main(int argc, char **argv) {
     // now start the servers that depend on the vfs
     launchServer("devfs", NULL);    // /dev
     launchServer("procfs", NULL);   // /proc
+    launchServer("lxfs", NULL);     // lxfs file system driver
 
     // mount devfs and procfs
     mount("", "/dev", "devfs", 0, NULL);
@@ -125,6 +126,9 @@ int main(int argc, char **argv) {
     launchServer("pci", NULL);      // PCI bus
     launchServer("sdev", NULL);     // generic storage device interface
     launchServer("nvme", NULL);     // NVMe SSDs
+
+    // mount root
+    mount("/dev/sd0p0", "/", "lxfs", 0, NULL);
 
     for(;;) sched_yield();          // kernel will panic if lumen exits!
 }
