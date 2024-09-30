@@ -48,7 +48,7 @@ int server() {
         }
 
         s = recv(vfs, res, SERVER_MAX_SIZE, MSG_PEEK);  // peek to check size
-        if(s > 0 && s < SERVER_MAX_SIZE) {
+        if(s > 0 && s <= SERVER_MAX_SIZE) {
             if(res->header.length > SERVER_MAX_SIZE) {
                 void *newptr = realloc(res, res->header.length);
                 if(!newptr) {
@@ -69,7 +69,7 @@ int server() {
         }
 
         s = recv(kthd, res, SERVER_MAX_SIZE, MSG_PEEK);  // peek to check size
-        if(s > 0 && s < SERVER_MAX_SIZE) {
+        if(s > 0 && s <= SERVER_MAX_SIZE) {
             if(res->header.length > SERVER_MAX_SIZE) {
                 void *newptr = realloc(res, res->header.length);
                 if(!newptr) {
@@ -82,7 +82,7 @@ int server() {
 
             recv(kthd, res, res->header.length, 0);
 
-            // response from the vfs
+            // response from kthd
             if((res->header.command < 0x8000) || (res->header.command > MAX_SYSCALL_COMMAND))
                 luxLogf(KPRINT_LEVEL_WARNING, "unimplemented syscall response 0x%X len %d for pid %d\n", res->header.command,res->header.length, res->header.requester);
             else
