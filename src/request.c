@@ -24,6 +24,9 @@ void relaySyscallRequest(SyscallHeader *hdr) {
         //luxLog(KPRINT_LEVEL_DEBUG, "relaying to vfs...\n");
         socket = vfs;
         break;
+    case RELAY_KTHD:
+        socket = kthd;
+        break;
     default:
         luxLogf(KPRINT_LEVEL_WARNING, "unhandled syscall command 0x%X, relay to %d\n", command|0x8000, syscallRelayTable[command]);
         return;
@@ -43,4 +46,13 @@ static int syscallRelayTable[] = {
     RELAY_VFS,          // 7 - ioctl()
     RELAY_VFS,          // 8 - opendir()
     RELAY_VFS,          // 9 - readdir()
+    RELAY_VFS,          // 10 - chmod()
+    RELAY_VFS,          // 11 - chown()
+    RELAY_VFS,          // 12 - link()
+    RELAY_VFS,          // 13 - mkdir()
+    RELAY_VFS,          // 14 - rmdir()
+
+    RELAY_KTHD,         // 15 - exec() family
+    RELAY_KTHD,         // 16 - chdir()
+    RELAY_KTHD,         // 17 - chroot()
 };
