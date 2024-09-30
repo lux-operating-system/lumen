@@ -15,14 +15,13 @@
 #include <sys/lux/lux.h>        // execrdv
 #include <liblux/liblux.h>
 #include <lumen/lumen.h>
-#include <fnctl.h>
-#include <dirent.h>
+#include <unistd.h>
 
 /* socket descriptors for the kernel connection and for the lumen server */
 int kernelsd, lumensd;
 pid_t self;
 
-int vfs = -1;
+int vfs = -1, kthd = -1;
 
 /* launchServer(): launches a server from the ramdisk
  * params: name - file name of the server executable
@@ -101,11 +100,15 @@ int main(int argc, char **argv) {
     vfs = launchServer("vfs", NULL);
     luxLogf(KPRINT_LEVEL_DEBUG, "connected to virtual file system at socket %d\n", vfs);
 
+    // as well as the kernel thread helper daemon
+    kthd = launchServer("kthd", NULL);
+    luxLogf(KPRINT_LEVEL_DEBUG, "connected to kernel thread helper daemon at socket %d\n", kthd);
+
     // fork into a second process that will be used for the lumen server
     // this has to be done AFTER the vfs is loaded because the server will need
-    // access to the vfs socket descriptor to relay other syscalls
+    // access to the vfs and kthd socket descriptors to relay other syscalls
 
-    // TODO: replace this fork() with a POSIX thread after i implement them
+    // TODO: replace this fork() with a POSIX thread after I implement them
     pid_t pid = fork();
     if(!pid) return server();
 

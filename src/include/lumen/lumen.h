@@ -9,10 +9,11 @@
 #include <liblux/liblux.h>
 
 #define RELAY_VFS                   1
+#define RELAY_KTHD                  2
 
 extern int kernelsd, lumensd;
 extern pid_t self;
-extern int vfs;
+extern int vfs, kthd;
 
 void relaySyscallRequest(SyscallHeader *);
 void relaySyscallResponse(SyscallHeader *);
