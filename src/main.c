@@ -16,6 +16,7 @@
 #include <liblux/liblux.h>
 #include <lumen/lumen.h>
 #include <unistd.h>
+#include <errno.h>
 
 /* socket descriptors for the kernel connection and for the lumen server */
 int kernelsd, lumensd;
@@ -131,7 +132,26 @@ int main(int argc, char **argv) {
     launchServer("nvme", NULL);     // NVMe SSDs
 
     // mount root
-    mount("/dev/sd0p0", "/", "lxfs", 0, NULL);
+    if(mount("/dev/sd0p0", "/", "lxfs", 0, NULL)) {
+        luxLogf(KPRINT_LEVEL_ERROR, "failed to mount root file system\n");
+        return -1;  // induce a kernel panic
+    }
+
+    // set root directory
+    chdir("/");
+
+    // set PATH
+    setenv("PATH", "/bin:/sbin:/usr/bin", 1);
+
+    // and execute the terminal
+    pid_t p = fork();
+    if(!p) {
+        char *const arg[] = { "nterm", "lush", NULL };
+        execvp("nterm", arg);
+
+        luxLogf(KPRINT_LEVEL_ERROR, "failed to launch terminal, status = %d\n", errno);
+        exit(-1);
+    }
 
     for(;;) sched_yield();          // kernel will panic if lumen exits!
 }
