@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
     chdir("/");
 
     // set PATH
-    setenv("PATH", "/bin:/sbin:/usr/bin", 1);
+    setenv("PATH", "/bin", 1);
 
     // and execute the terminal
     pid_t p = fork();
