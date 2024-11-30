@@ -55,4 +55,7 @@ static int syscallRelayTable[] = {
     RELAY_KTHD,         // 15 - exec() family
     RELAY_KTHD,         // 16 - chdir()
     RELAY_KTHD,         // 17 - chroot()
+
+    RELAY_VFS,          // 18 - mmap()
+    RELAY_VFS           // 19 - msync()
 };
