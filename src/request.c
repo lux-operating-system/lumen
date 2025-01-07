@@ -58,4 +58,7 @@ static int syscallRelayTable[] = {
 
     RELAY_VFS,          // 18 - mmap()
     RELAY_VFS           // 19 - msync()
+    RELAY_VFS,          // 20 - unlink()
+    RELAY_VFS,          // 21 - symlink()
+    RELAY_VFS           // 22 - readlink()
 };
