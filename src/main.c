@@ -130,6 +130,7 @@ int main(int argc, char **argv) {
     launchServer("pci", NULL);      // PCI bus
     launchServer("sdev", NULL);     // generic storage device interface
     launchServer("nvme", NULL);     // NVMe SSDs
+    launchServer("ide", NULL);      // IDE (ATA HDDs)
 
     // mount root
     if(mount("/dev/sd0p0", "/", "lxfs", 0, NULL)) {
