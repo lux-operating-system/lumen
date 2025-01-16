@@ -8,6 +8,7 @@
 #include <liblux/liblux.h>
 #include <lumen/lumen.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 /* server(): main server idle function for lumen
  * this really just listens to requests from the kernel and responses from all
@@ -24,9 +25,12 @@ int server() {
 
     kernelsd = luxGetKernelSocket();
     while(1) {
+        int busy = 0;
+
         // receive requests from the kernel and responses from other servers here
         ssize_t s = recv(kernelsd, req, SERVER_MAX_SIZE, MSG_PEEK);     // peek to check size
         if(s > 0 && s <= SERVER_MAX_SIZE) {
+            busy++;
             if(req->header.length > SERVER_MAX_SIZE) {
                 void *newptr = realloc(req, req->header.length);
                 if(!newptr) {
@@ -49,6 +53,7 @@ int server() {
 
         s = recv(vfs, res, SERVER_MAX_SIZE, MSG_PEEK);  // peek to check size
         if(s > 0 && s <= SERVER_MAX_SIZE) {
+            busy++;
             if(res->header.length > SERVER_MAX_SIZE) {
                 void *newptr = realloc(res, res->header.length);
                 if(!newptr) {
@@ -70,6 +75,7 @@ int server() {
 
         s = recv(kthd, res, SERVER_MAX_SIZE, MSG_PEEK);  // peek to check size
         if(s > 0 && s <= SERVER_MAX_SIZE) {
+            busy++;
             if(res->header.length > SERVER_MAX_SIZE) {
                 void *newptr = realloc(res, res->header.length);
                 if(!newptr) {
@@ -88,5 +94,7 @@ int server() {
             else
                 luxSendKernel(res);
         }
+
+        if(!busy) sched_yield();
     }
 }
